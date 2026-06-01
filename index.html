@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>昌浩新能源数据与图片库</title>
+    <title>首批量项目净空情况</title>
     <style>
         body { font-family: sans-serif; margin: 40px; }
         table { border-collapse: collapse; width: 100%; max-width: 1200px; margin: 0 auto; }
@@ -20,8 +20,8 @@
 
     <script>
         // ========== 把下面的三项改成你自己的信息 ==========
-        const GITHUB_USER = '你的GitHub用户名';
-        const GITHUB_REPO = '你的仓库名';
+        const GITHUB_USER = 'yusimon774-byte';  //'你的GitHub用户名'
+        const GITHUB_REPO = 'Clearance';  //'你的仓库名'
         const GITHUB_BRANCH = 'main';  // 或者 master
 
         // 使用 jsDelivr CDN 获取图片直链，不会触发下载
@@ -42,7 +42,7 @@
                 data.forEach(row => {
                     html += '<tr>';
                     columns.forEach(col => { html += `<td>${row[col] || ''}</td>`; });
-                    const imgFileName = row['图片'] || row['image'] || '';
+                    const imgFileName = row['图片'] || row['image'] || '' || row['时序图'];
                     if (imgFileName) {
                         const imgSrc = IMAGE_BASE_URL + imgFileName;
                         html += `<td><a href="${imgSrc}" target="_blank"><img src="${imgSrc}" alt="${imgFileName}" onerror="this.onerror=null; this.parentNode.innerHTML='<span class=\\'no-image\\'>图片未找到</span>'"></a></td>`;
