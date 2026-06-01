@@ -12,6 +12,21 @@
         img { max-height: 120px; max-width: 200px; object-fit: contain; cursor: pointer; transition: transform 0.2s; }
         img:hover { transform: scale(1.1); }
         .no-image { color: #999; }
+        table {
+            table-layout: auto; /* 自动布局，但配合下面的设置不会乱 */
+            width: 100%;
+        }
+
+        /* 除了图片列，其他列最小宽度保证文字能显示 */
+        th:not(:last-child), td:not(:last-child) {
+            min-width: 60px;
+        }
+
+        /* 图片预览列固定宽度 */
+        th:last-child, td:last-child {
+            width: 220px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
