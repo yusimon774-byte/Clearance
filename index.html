@@ -6,23 +6,13 @@
     <title>首批量项目净空情况</title>
     <style>
         body { font-family: sans-serif; margin: 40px; }
-        table { border-collapse: collapse; width: 100%; max-width: 1200px; margin: 0 auto; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        .table-wrapper { overflow-x: auto; }
+        table { border-collapse: collapse; min-width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; white-space: nowrap; }
         th { background-color: #f2f2f2; }
         img { max-height: 120px; max-width: 200px; object-fit: contain; cursor: pointer; transition: transform 0.2s; }
         img:hover { transform: scale(1.1); }
         .no-image { color: #999; }
-        table {
-            table-layout: auto;
-            width: 100%;
-        }
-        th:not(:last-child), td:not(:last-child) {
-            min-width: 60px;
-        }
-        th:last-child, td:last-child {
-            width: 220px;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -30,14 +20,11 @@
     <div id="app">正在加载数据...</div>
 
     <script>
-        // ========== 你的 GitHub 信息 ==========
         const GITHUB_USER = 'yusimon774-byte';
         const GITHUB_REPO = 'Clearance';
         const GITHUB_BRANCH = 'main';
         const IMAGE_BASE_URL = `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}/`;
-
-        // 🔧 哪个字段需要渲染成图片（可修改为你的实际列名）
-        const IMAGE_FIELD = '时序图';
+        const IMAGE_FIELD = '时序图';   // 改成你实际存图片文件名的列名
 
         fetch('./data.json')
             .then(response => response.json())
@@ -46,22 +33,19 @@
                     document.getElementById('app').innerHTML = '<p style="text-align:center;">没有数据</p>';
                     return;
                 }
-
-                const columns = Object.keys(data[0]); // 保留原始列顺序
-
-                let html = '<table><thead><tr>';
+                const columns = Object.keys(data[0]); // 不做任何过滤
+                let html = '<div class="table-wrapper"><table><thead><tr>';
                 columns.forEach(col => { html += `<th>${col}</th>`; });
                 html += '</tr></thead><tbody>';
 
                 data.forEach(row => {
                     html += '<tr>';
                     columns.forEach(col => {
-                        // 如果当前列是图片列，渲染为图片；否则显示普通文本
                         if (col === IMAGE_FIELD) {
                             const imgFileName = row[col] || '';
                             if (imgFileName) {
                                 const imgSrc = IMAGE_BASE_URL + imgFileName;
-                                html += `<td><a href="${imgSrc}" target="_blank"><img src="${imgSrc}" alt="${col}" onerror="this.onerror=null; this.parentNode.innerHTML='<span class=\\'no-image\\'>图片未找到</span>'"></a></td>`;
+                                html += `<td><a href="${imgSrc}" target="_blank"><img src="${imgSrc}" alt="${col}" onerror="this.onerror=null; this.parentNode.innerHTML='<span class="no-image">图片未找到</span>'"></a></td>`;
                             } else {
                                 html += '<td class="no-image">无图片</td>';
                             }
@@ -71,8 +55,7 @@
                     });
                     html += '</tr>';
                 });
-
-                html += '</tbody></table>';
+                html += '</tbody></table></div>';
                 document.getElementById('app').innerHTML = html;
             })
             .catch(err => {
