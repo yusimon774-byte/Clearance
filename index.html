@@ -14,7 +14,6 @@
             color: #2c3e50;
             margin-bottom: 20px;
         }
-        /* 表格容器，支持横向滚动 */
         .table-container {
             overflow-x: auto;
             background: white;
@@ -41,7 +40,6 @@
             position: sticky;
             top: 0;
         }
-        /* 图片单元格样式 */
         td img {
             max-height: 120px;
             max-width: 200px;
@@ -59,7 +57,6 @@
             font-style: italic;
             font-size: 13px;
         }
-        /* 加载失败提示 */
         .error-message {
             color: #e74c3c;
             font-weight: bold;
@@ -73,14 +70,15 @@
     <div id="app">正在加载数据...</div>
 
     <script>
-        // ==================== 配置区（修改为你的信息） ====================
-        const GITEE_USER = '你的Gitee用户名';      // 例如：myproject
-        const GITEE_REPO = '你的仓库名';           // 例如：clearance-data
-        const GITEE_BRANCH = 'master';            // 默认主分支，也可能是 main
-        const IMAGE_FIELD = '时序图';              // 存放图片文件名的列名
-        // ================================================================
+        // ==================== 配置区（修改为你的 GitHub 信息） ====================
+        const GITHUB_USER = 'yusimon774-byte';      // 你的 GitHub 用户名
+        const GITHUB_REPO = 'Clearance';            // 仓库名
+        const GITHUB_BRANCH = 'main';               // 分支，一般是 main 或 master
+        const IMAGE_FIELD = '时序图';                // 存放图片文件名的列名
+        // =====================================================================
 
-        const IMAGE_BASE_URL = `https://gitee.com/${GITEE_USER}/${GITEE_REPO}/raw/${GITEE_BRANCH}/`;
+        // 使用 GitHub Raw 直链（不需要 jsDelivr）
+        const IMAGE_BASE_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/`;
 
         fetch('./data.json')
             .then(response => {
@@ -93,7 +91,6 @@
                     return;
                 }
 
-                // 获取所有列名（保留原始顺序）
                 const columns = Object.keys(data[0]);
                 if (columns.length === 0) {
                     document.getElementById('app').innerHTML = '<p class="error-message">数据格式错误，未找到列名</p>';
@@ -101,21 +98,18 @@
                 }
 
                 let html = '<div class="table-container"><table><thead><tr>';
-                // 生成表头
                 columns.forEach(col => {
                     html += `<th>${col}</th>`;
                 });
                 html += '</tr></thead><tbody>';
 
-                // 生成数据行
-                data.forEach((row, rowIndex) => {
+                data.forEach((row) => {
                     html += '<tr>';
                     columns.forEach(col => {
                         if (col === IMAGE_FIELD) {
                             const imgFileName = (row[col] || '').trim();
                             if (imgFileName) {
                                 const imgSrc = IMAGE_BASE_URL + imgFileName;
-                                // 添加重试机制：第一次失败时重试一次，仍失败则显示提示
                                 html += `<td>
                                     <a href="${imgSrc}" target="_blank">
                                         <img src="${imgSrc}" 
@@ -136,7 +130,6 @@
                                 html += '<td class="no-image">无图片</td>';
                             }
                         } else {
-                            // 普通文本列
                             const value = row[col] !== undefined ? row[col] : '';
                             html += `<td>${value}</td>`;
                         }
