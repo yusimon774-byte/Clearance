@@ -13,16 +13,12 @@
         img:hover { transform: scale(1.1); }
         .no-image { color: #999; }
         table {
-            table-layout: auto; /* 自动布局，但配合下面的设置不会乱 */
+            table-layout: auto;
             width: 100%;
         }
-
-        /* 除了图片列，其他列最小宽度保证文字能显示 */
         th:not(:last-child), td:not(:last-child) {
             min-width: 60px;
         }
-
-        /* 图片预览列固定宽度 */
         th:last-child, td:last-child {
             width: 220px;
             text-align: center;
@@ -34,13 +30,14 @@
     <div id="app">正在加载数据...</div>
 
     <script>
-        // ========== 把下面的三项改成你自己的信息 ==========
-        const GITHUB_USER = 'yusimon774-byte';  //'你的GitHub用户名'
-        const GITHUB_REPO = 'Clearance';  //'你的仓库名'
-        const GITHUB_BRANCH = 'main';  // 或者 master
-
-        // 使用 jsDelivr CDN 获取图片直链，不会触发下载
+        // ========== 你的 GitHub 信息 ==========
+        const GITHUB_USER = 'yusimon774-byte';
+        const GITHUB_REPO = 'Clearance';
+        const GITHUB_BRANCH = 'main';
         const IMAGE_BASE_URL = `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}/`;
+
+        // 🔧 哪个字段需要渲染成图片（可修改为你的实际列名）
+        const IMAGE_FIELD = '时序图';
 
         fetch('./data.json')
             .then(response => response.json())
@@ -49,25 +46,32 @@
                     document.getElementById('app').innerHTML = '<p style="text-align:center;">没有数据</p>';
                     return;
                 }
-                //const columns = Object.keys(data[0]);
-                const excludeColumns = ['时序图'];
-                const columns = Object.keys(data[0]).filter(col => !excludeColumns.includes(col));
+
+                const columns = Object.keys(data[0]); // 保留原始列顺序
+
                 let html = '<table><thead><tr>';
                 columns.forEach(col => { html += `<th>${col}</th>`; });
-                html += '<th>图片预览</th></tr></thead><tbody>';
+                html += '</tr></thead><tbody>';
 
                 data.forEach(row => {
                     html += '<tr>';
-                    columns.forEach(col => { html += `<td>${row[col] || ''}</td>`; });
-                    const imgFileName = row['图片'] || row['image'] || '' || row['时序图'];
-                    if (imgFileName) {
-                        const imgSrc = IMAGE_BASE_URL + imgFileName;
-                        html += `<td><a href="${imgSrc}" target="_blank"><img src="${imgSrc}" alt="${imgFileName}" onerror="this.onerror=null; this.parentNode.innerHTML='<span class=\\'no-image\\'>图片未找到</span>'"></a></td>`;
-                    } else {
-                        html += '<td class="no-image">无图片</td>';
-                    }
+                    columns.forEach(col => {
+                        // 如果当前列是图片列，渲染为图片；否则显示普通文本
+                        if (col === IMAGE_FIELD) {
+                            const imgFileName = row[col] || '';
+                            if (imgFileName) {
+                                const imgSrc = IMAGE_BASE_URL + imgFileName;
+                                html += `<td><a href="${imgSrc}" target="_blank"><img src="${imgSrc}" alt="${col}" onerror="this.onerror=null; this.parentNode.innerHTML='<span class=\\'no-image\\'>图片未找到</span>'"></a></td>`;
+                            } else {
+                                html += '<td class="no-image">无图片</td>';
+                            }
+                        } else {
+                            html += `<td>${row[col] || ''}</td>`;
+                        }
+                    });
                     html += '</tr>';
                 });
+
                 html += '</tbody></table>';
                 document.getElementById('app').innerHTML = html;
             })
