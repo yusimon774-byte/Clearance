@@ -109,7 +109,7 @@
                         if (col === IMAGE_FIELD) {
                             const imgFileName = (row[col] || '').trim();
                             if (imgFileName) {
-                                const imgSrc = IMAGE_BASE_URL + imgFileName;
+                                const imgSrc = IMAGE_BASE_URL + encodeURIComponent(imgFileName);
                                 html += `<td>
                                     <a href="${imgSrc}" target="_blank">
                                         <img src="${imgSrc}" 
