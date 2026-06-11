@@ -5,14 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>首批量项目净空情况</title>
     <style>
-        body { font-family: sans-serif; margin: 40px; }
-        .table-wrapper { overflow-x: auto; }
-        table { border-collapse: collapse; min-width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; white-space: nowrap; }
-        th { background-color: #f2f2f2; }
-        img { max-height: 120px; max-width: 200px; object-fit: contain; cursor: pointer; transition: transform 0.2s; }
-        img:hover { transform: scale(1.1); }
-        .no-image { color: #999; }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            margin: 30px;
+            background-color: #f8f9fa;
+        }
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        /* 表格容器，支持横向滚动 */
+        .table-container {
+            overflow-x: auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 10px;
+        }
+        table {
+            border-collapse: collapse;
+            min-width: 100%;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 10px 14px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        /* 图片单元格样式 */
+        td img {
+            max-height: 120px;
+            max-width: 200px;
+            object-fit: contain;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        td img:hover {
+            transform: scale(1.08);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .no-image {
+            color: #999;
+            font-style: italic;
+            font-size: 13px;
+        }
+        /* 加载失败提示 */
+        .error-message {
+            color: #e74c3c;
+            font-weight: bold;
+            padding: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -20,47 +73,84 @@
     <div id="app">正在加载数据...</div>
 
     <script>
-        const GITHUB_USER = 'yusimon774-byte';
-        const GITHUB_REPO = 'Clearance';
-        const GITHUB_BRANCH = 'main';
-        const IMAGE_BASE_URL = `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}/`;
-        const IMAGE_FIELD = '时序图';   // 改成你实际存图片文件名的列名
+        // ==================== 配置区（修改为你的信息） ====================
+        const GITEE_USER = '你的Gitee用户名';      // 例如：myproject
+        const GITEE_REPO = '你的仓库名';           // 例如：clearance-data
+        const GITEE_BRANCH = 'master';            // 默认主分支，也可能是 main
+        const IMAGE_FIELD = '时序图';              // 存放图片文件名的列名
+        // ================================================================
+
+        const IMAGE_BASE_URL = `https://gitee.com/${GITEE_USER}/${GITEE_REPO}/raw/${GITEE_BRANCH}/`;
 
         fetch('./data.json')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error('data.json 加载失败，状态码：' + response.status);
+                return response.json();
+            })
             .then(data => {
-                if (data.length === 0) {
-                    document.getElementById('app').innerHTML = '<p style="text-align:center;">没有数据</p>';
+                if (!Array.isArray(data) || data.length === 0) {
+                    document.getElementById('app').innerHTML = '<p class="error-message">没有有效数据</p>';
                     return;
                 }
-                const columns = Object.keys(data[0]); // 不做任何过滤
-                let html = '<div class="table-wrapper"><table><thead><tr>';
-                columns.forEach(col => { html += `<th>${col}</th>`; });
+
+                // 获取所有列名（保留原始顺序）
+                const columns = Object.keys(data[0]);
+                if (columns.length === 0) {
+                    document.getElementById('app').innerHTML = '<p class="error-message">数据格式错误，未找到列名</p>';
+                    return;
+                }
+
+                let html = '<div class="table-container"><table><thead><tr>';
+                // 生成表头
+                columns.forEach(col => {
+                    html += `<th>${col}</th>`;
+                });
                 html += '</tr></thead><tbody>';
 
-                data.forEach(row => {
+                // 生成数据行
+                data.forEach((row, rowIndex) => {
                     html += '<tr>';
                     columns.forEach(col => {
                         if (col === IMAGE_FIELD) {
-                            const imgFileName = row[col] || '';
+                            const imgFileName = (row[col] || '').trim();
                             if (imgFileName) {
                                 const imgSrc = IMAGE_BASE_URL + imgFileName;
-                                html += `<td><a href="${imgSrc}" target="_blank"><img src="${imgSrc}" alt="${col}" onerror="this.onerror=null; this.parentNode.innerHTML='<span class="no-image">图片未找到</span>'"></a></td>`;
+                                // 添加重试机制：第一次失败时重试一次，仍失败则显示提示
+                                html += `<td>
+                                    <a href="${imgSrc}" target="_blank">
+                                        <img src="${imgSrc}" 
+                                             alt="${col}" 
+                                             data-retry="0"
+                                             onerror="
+                                                if(this.dataset.retry === '0') {
+                                                    this.dataset.retry = '1';
+                                                    this.src = this.src + '?retry=' + new Date().getTime();
+                                                } else {
+                                                    this.onerror = null;
+                                                    this.parentNode.innerHTML = '<span class=\\'no-image\\'>加载失败</span>';
+                                                }
+                                             ">
+                                    </a>
+                                </td>`;
                             } else {
                                 html += '<td class="no-image">无图片</td>';
                             }
                         } else {
-                            html += `<td>${row[col] || ''}</td>`;
+                            // 普通文本列
+                            const value = row[col] !== undefined ? row[col] : '';
+                            html += `<td>${value}</td>`;
                         }
                     });
                     html += '</tr>';
                 });
+
                 html += '</tbody></table></div>';
                 document.getElementById('app').innerHTML = html;
             })
             .catch(err => {
-                document.getElementById('app').innerHTML = '<p style="text-align:center;color:red;">数据加载失败，请检查 data.json 文件。</p>';
                 console.error(err);
+                document.getElementById('app').innerHTML = 
+                    `<p class="error-message">数据加载失败，请确保 data.json 文件存在且格式正确。<br>错误详情：${err.message}</p>`;
             });
     </script>
 </body>
