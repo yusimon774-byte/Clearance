@@ -39,6 +39,32 @@
             font-weight: 600;
             position: sticky;
             top: 0;
+            z-index: 2;
+        }
+        /* 项目汇总行样式 */
+        .project-summary {
+            background-color: #f0f7ff;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .project-summary:hover {
+            background-color: #d9ecff;
+        }
+        .project-summary .toggle-icon {
+            font-size: 16px;
+            margin-right: 6px;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        .project-summary.expanded .toggle-icon {
+            transform: rotate(90deg);
+        }
+        /* 机组明细行默认隐藏 */
+        .detail-row {
+            display: none;
+        }
+        .detail-row.visible {
+            display: table-row;
         }
         td img {
             max-height: 120px;
@@ -46,7 +72,7 @@
             object-fit: contain;
             border-radius: 4px;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: transform 0.2s ease;
         }
         td img:hover {
             transform: scale(1.08);
@@ -63,6 +89,11 @@
             padding: 20px;
             text-align: center;
         }
+        /* 机组明细行中项目级别列留空，保持对齐 */
+        .detail-row .project-col {
+            border-top: none;
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
@@ -70,14 +101,33 @@
     <div id="app">正在加载数据...</div>
 
     <script>
-        // ==================== 配置区（修改为你的 GitHub 信息） ====================
-        const GITHUB_USER = 'yusimon774-byte';      // 你的 GitHub 用户名
-        const GITHUB_REPO = 'Clearance';            // 仓库名
-        const GITHUB_BRANCH = 'main';               // 分支，一般是 main 或 master
+        // ==================== 配置区 ====================
+        const GITHUB_USER = 'yusimon774-byte';
+        const GITHUB_REPO = 'Clearance';
+        const GITHUB_BRANCH = 'main';
         const IMAGE_FIELD = '时序图';                // 存放图片文件名的列名
-        // =====================================================================
 
-        // 使用 GitHub Raw 直链（不需要 jsDelivr）
+        // 定义哪些列属于“项目级别”（在汇总行显示，明细行留空）
+        const PROJECT_LEVEL_COLS = [
+            '项目名称',
+            '现场经理',
+            '2026年6月_动态N比例（全场）/%',      // 请按你实际列名修改
+            '2026年6月_低净空比例（全场）/%',
+            '2026年5月_动态N比例（全场）/%',
+            '2026年5月_低净空比例（全场）/%'
+        ];
+
+        // 定义哪些列属于“机组级别”（在明细行显示，汇总行留空或显示“详情”）
+        const UNIT_LEVEL_COLS = [
+            '机组',
+            '问题',
+            IMAGE_FIELD,                        // 时序图
+            '向现场提出时间',
+            '处理情况',
+            '闭环情况（当前状态+时间节点）'
+        ];
+        // ===============================================
+
         const IMAGE_BASE_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/`;
 
         fetch('./data.json')
@@ -91,54 +141,102 @@
                     return;
                 }
 
-                const columns = Object.keys(data[0]);
-                if (columns.length === 0) {
-                    document.getElementById('app').innerHTML = '<p class="error-message">数据格式错误，未找到列名</p>';
-                    return;
-                }
+                // 获取所有列名
+                const allColumns = Object.keys(data[0]);
 
+                // 按“项目名称”分组
+                const groups = {};
+                data.forEach(row => {
+                    const projName = row['项目名称'] || '未知项目';
+                    if (!groups[projName]) groups[projName] = [];
+                    groups[projName].push(row);
+                });
+
+                // 构建表格
                 let html = '<div class="table-container"><table><thead><tr>';
-                columns.forEach(col => {
+                // 表头：显示所有列
+                allColumns.forEach(col => {
+                    // 对于项目级别列和机组级别列，都显示表头
                     html += `<th>${col}</th>`;
                 });
                 html += '</tr></thead><tbody>';
 
-                data.forEach((row) => {
-                    html += '<tr>';
-                    columns.forEach(col => {
+                // 遍历每个项目组
+                Object.keys(groups).forEach((projName, groupIndex) => {
+                    const rows = groups[projName];
+                    const hasDetail = rows.length > 1 || (rows[0]['机组'] && rows[0]['机组'].trim() !== '/' && rows[0]['机组'].trim() !== '无' && rows[0]['机组'].trim() !== '');
+                    const groupClass = `group-${groupIndex}`;
+
+                    // 第一行作为项目汇总行（也是数据行，但带展开功能）
+                    const summaryRow = rows[0]; // 取第一行作为汇总显示
+                    html += `<tr class="project-summary" data-group="${groupClass}">`;
+                    allColumns.forEach(col => {
                         if (col === IMAGE_FIELD) {
-                            const imgFileName = (row[col] || '').trim();
+                            const imgFileName = (summaryRow[col] || '').trim();
                             if (imgFileName) {
                                 const imgSrc = IMAGE_BASE_URL + encodeURIComponent(imgFileName);
-                                html += `<td>
-                                    <a href="${imgSrc}" target="_blank">
-                                        <img src="${imgSrc}" 
-                                             alt="${col}" 
-                                             data-retry="0"
-                                             onerror="
-                                                if(this.dataset.retry === '0') {
-                                                    this.dataset.retry = '1';
-                                                    this.src = this.src + '?retry=' + new Date().getTime();
-                                                } else {
-                                                    this.onerror = null;
-                                                    this.parentNode.innerHTML = '<span class=\\'no-image\\'>加载失败</span>';
-                                                }
-                                             ">
-                                    </a>
-                                </td>`;
+                                html += `<td><a href="${imgSrc}" target="_blank"><img src="${imgSrc}" alt="${col}" onerror="this.onerror=null; this.parentNode.innerHTML='<span class=\\'no-image\\'>加载失败</span>'"></a></td>`;
                             } else {
                                 html += '<td class="no-image">无图片</td>';
                             }
+                        } else if (col === '项目名称') {
+                            // 在项目名称列加上折叠图标和按钮
+                            html += `<td><span class="toggle-icon">▶</span>${summaryRow[col] || ''}</td>`;
                         } else {
-                            const value = row[col] !== undefined ? row[col] : '';
-                            html += `<td>${value}</td>`;
+                            // 其他列：如果该列是机组级别列，在汇总行也可以显示内容（如果有机组信息），这里正常显示
+                            html += `<td>${summaryRow[col] || ''}</td>`;
                         }
                     });
                     html += '</tr>';
+
+                    // 如果有多行明细，则生成明细行（从第2行开始，或者第一行也包含在内但作为汇总时，明细行从索引1开始）
+                    if (hasDetail) {
+                        // 明细行：从 rows[1] 开始（如果第一行也包含在 rows 中，并且 rows 本身可能包含了汇总行？这里分组后 rows 包含所有原始行，所以第一行已用作汇总，明细从第二行开始）
+                        for (let i = 1; i < rows.length; i++) {
+                            html += `<tr class="detail-row ${groupClass}">`;
+                            allColumns.forEach(col => {
+                                // 如果是项目级别列，留空（保持表格对齐）
+                                if (PROJECT_LEVEL_COLS.includes(col)) {
+                                    html += '<td class="project-col"></td>';
+                                } else if (col === IMAGE_FIELD) {
+                                    const imgFileName = (rows[i][col] || '').trim();
+                                    if (imgFileName) {
+                                        const imgSrc = IMAGE_BASE_URL + encodeURIComponent(imgFileName);
+                                        html += `<td><a href="${imgSrc}" target="_blank"><img src="${imgSrc}" alt="${col}" onerror="this.onerror=null; this.parentNode.innerHTML='<span class=\\'no-image\\'>加载失败</span>'"></a></td>`;
+                                    } else {
+                                        html += '<td class="no-image">无图片</td>';
+                                    }
+                                } else {
+                                    html += `<td>${rows[i][col] || ''}</td>`;
+                                }
+                            });
+                            html += '</tr>';
+                        }
+                    }
                 });
 
                 html += '</tbody></table></div>';
                 document.getElementById('app').innerHTML = html;
+
+                // 绑定展开/折叠事件
+                document.querySelectorAll('.project-summary').forEach(row => {
+                    row.addEventListener('click', function() {
+                        const group = this.dataset.group;
+                        const detailRows = document.querySelectorAll(`.detail-row.${group}`);
+                        const isExpanded = this.classList.contains('expanded');
+                        if (isExpanded) {
+                            // 折叠：隐藏明细行，恢复图标
+                            detailRows.forEach(r => r.classList.remove('visible'));
+                            this.classList.remove('expanded');
+                            this.querySelector('.toggle-icon').textContent = '▶';
+                        } else {
+                            // 展开：显示明细行，旋转图标
+                            detailRows.forEach(r => r.classList.add('visible'));
+                            this.classList.add('expanded');
+                            this.querySelector('.toggle-icon').textContent = '▼';
+                        }
+                    });
+                });
             })
             .catch(err => {
                 console.error(err);
